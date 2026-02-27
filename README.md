@@ -66,7 +66,7 @@ Replace `27019` if you changed `MONGO_RS_PORT`.
 On your client machine, start a local forwarder:
 
 ```bash
-cloudflared access tcp --hostname mongo-db.eodeluga.com --url 127.0.0.1:37017
+cloudflared access tcp --hostname <your-cloudflare-tunnel-host> --url 127.0.0.1:37017
 ```
 
 Then connect Compass to:
