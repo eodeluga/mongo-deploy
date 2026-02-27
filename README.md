@@ -65,7 +65,7 @@ Replace `27019` if you changed `MONGO_RS_PORT`.
 
 On your client machine, start a local forwarder:
 
-```bash
+```text
 cloudflared access tcp --hostname <your-cloudflare-tunnel-host> --url 127.0.0.1:37017
 ```
 
