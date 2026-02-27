@@ -16,8 +16,10 @@ services:
       - ./scripts/mongo-init.sh:/usr/local/bin/mongo-init.sh:ro
     entrypoint: ["/usr/local/bin/mongo-init.sh"]
     networks:
-      - mongo_host_access
-      - mongo_private
+      mongo_host_access:
+        aliases:
+          - mongo
+      mongo_private: {}
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -39,6 +41,7 @@ networks:
     driver: bridge
     internal: true
   mongo_host_access:
+    name: mongo_host_access
     driver: bridge
   cloudflare_egress:
     driver: bridge
