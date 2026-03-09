@@ -4,44 +4,65 @@ services:
     container_name: mongo-db
     restart: unless-stopped
     user: "999:999"                # run as mongodb user inside the image
+
     environment:
-      MONGO_INITDB_ROOT_USERNAME: "${MONGO_INITDB_ROOT_USERNAME}"
-      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_INITDB_ROOT_PASSWORD}"
-      MONGO_RS_HOST: "${MONGO_RS_HOST:-mongo}"
-    ports:
-      - '127.0.0.1:${MONGO_RS_PORT:-27017}:27017'
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_RS_HOST: mongo
+
     volumes:
       - mongo-data:/data/db
       - mongo-config:/data/configdb
       - ./scripts/mongo-init.sh:/usr/local/bin/mongo-init.sh:ro
+
     entrypoint: ["/usr/local/bin/mongo-init.sh"]
+
     networks:
+      mongo-private:
+        ipv4_address: 172.22.0.10
+        aliases:
+          - mongo
       mongo-host-access:
         aliases:
           - mongo
-      mongo-private: {}
+
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared-tunnel
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TOKEN}
-    networks:
-      - mongo-private
-      - cloudflare-egress
     restart: unless-stopped
+
+    command: >
+      tunnel --no-autoupdate
+      run --token ${CLOUDFLARE_TOKEN}
+
     depends_on:
       - mongo
 
+    networks:
+      - mongo-private
+
 volumes:
   mongo-data:
+    name: mongo-data-store
+
   mongo-config:
+    name: mongo-config-store
 
 networks:
   mongo-private:
+    name: mongo-private
     driver: bridge
-    internal: true
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+
   mongo-host-access:
     name: mongo-host-access
     driver: bridge
-  cloudflare-egress:
-    driver: bridge
+
