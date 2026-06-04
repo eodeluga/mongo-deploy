@@ -2,46 +2,33 @@
 
 Docker Compose setup for a MongoDB 8 single-node replica set with:
 
-* Local host access on loopback only (`127.0.0.1`)
-* Cloudflare Tunnel connector (`cloudflared`)
-* Secure remote access via **Cloudflare WARP + private network routing**
-* Auth-enabled Mongo bootstrap via a custom init script
+- Local host access on loopback only (`127.0.0.1`)
+- Production Cloudflare Tunnel connector (`cloudflared`) for remote access
+- Auth-enabled Mongo bootstrap via a custom init script
 
 ## Services
 
-### `mongo`
-
-* MongoDB 8
-* Replica set: `rs0`
-* Auth enabled
-* Host bind: `127.0.0.1:${MONGO_RS_PORT}:27017`
-* Internal Docker network address used for WARP access
-
-### `cloudflared`
-
-* Runs your Cloudflare Tunnel connector
-* Advertises the Docker network to Cloudflare Zero Trust
-* Enables WARP clients to reach Mongo through private routing
+- `mongo`:
+  - MongoDB 8
+  - Replica set: `rs0`
+  - Auth enabled
+  - Host bind: `127.0.0.1:${MONGO_RS_PORT}:27017`
+- `cloudflared`:
+  - Runs the production Cloudflare Tunnel token
+  - Reaches Mongo over internal Docker network
 
 ## Requirements
 
-* Docker + Docker Compose plugin
-* Cloudflare Tunnel already created
-* Cloudflare Zero Trust configured with a **private network route**
-
-Required route:
-
-```
-172.22.0.0/16
-```
-
-This should point to your Mongo tunnel connector.
-
-This advertises the Docker network to WARP clients.
+- Docker + Docker Compose plugin
+- Cloudflare Tunnel already created
+- Cloudflare route for `mongo-db.eodeluga.com` set to:
+  - `tcp://mongo:27017`
 
 ## Environment Variables
 
-Create `.env` (already gitignored):
+Create `.env` for `docker-compose.yml` and `.env.dev` for `docker-compose.dev.yml` (both are gitignored).
+
+Default compose example:
 
 ```dotenv
 CLOUDFLARE_TOKEN=<your-cloudflare-tunnel-token>
@@ -64,7 +51,7 @@ For `docker-compose.dev.yml`, `MONGO_PORT` controls the host-published port and 
 
 ## Start
 
-Default compose:
+Default compose, which uses the production tunnel:
 
 ```bash
 docker compose up -d
@@ -85,9 +72,16 @@ docker compose ps
 docker logs --tail 100 mongo-db
 ```
 
+Dev compose:
+
+```bash
+docker compose -f docker-compose.dev.yml ps
+docker logs --tail 100 mongo-db
+```
+
 ## Connect (Local Machine)
 
-Mongo is exposed locally on loopback only.
+Default compose exposes Mongo locally on `127.0.0.1:${MONGO_RS_PORT}`.
 
 Mongo Compass URI:
 
@@ -97,60 +91,26 @@ mongodb://<username>:<password>@127.0.0.1:${MONGO_RS_PORT}/?authSource=admin&dir
 
 For dev compose, connect to `127.0.0.1:${MONGO_PORT:-27017}` instead.
 
-## Connect Through Cloudflare WARP
+## Connect Through Cloudflare Tunnel
 
-[Install and connect the Cloudflare WARP client](https://developers.cloudflare.com/cloudflare-one/team-and-resources/devices/warp/download-warp/) on your local machine.
-
-Once connected, your client becomes part of the private Zero Trust network.
-
-Mongo can then be accessed using the container's internal IP:
+On your client machine, start a local forwarder:
 
 ```text
-mongodb://<username>:<password>@172.22.0.10:27017/?authSource=admin&directConnection=true
+cloudflared access tcp --hostname <your-cloudflare-tunnel-host> --url 127.0.0.1:37017
 ```
 
-Example connectivity test:
-
-```bash
-nc -4 -vz 172.22.0.10 27017
-```
-
-If this succeeds, WARP routing is functioning correctly.
-
-## Optional: Friendly Hostname
-
-If you prefer not to use the IP address, create a DNS override inside Zero Trust:
-
-```
-Traffic policies
-→ DNS
-→ Override
-```
-
-Example rule:
-
-```
-DNS Query: mongo-db.internal.eodeluga.com
-Action: Override
-Override IP: 172.22.0.10
-```
-
-Then you can connect using:
+Then connect Compass to:
 
 ```text
-mongodb://<username>:<password>@mongo-db.internal.eodeluga.com:27017/?authSource=admin&directConnection=true
+mongodb://<username>:<password>@127.0.0.1:37017/?authSource=admin&directConnection=true
 ```
-
-This hostname resolution happens **inside the WARP network only** and does not require any public DNS records.
 
 ## Notes
 
-* `MONGO_RS_PORT` is the host-published port only.
-* Mongo inside Docker always listens on `27017`.
-* Remote access uses the internal Docker network (`172.22.0.0/16`) via WARP.
-* No `cloudflared access tcp` proxy is required when using WARP private network routing.
-
-If you change `.env`, recreate containers:
+- `MONGO_RS_PORT` is the host-published port only.
+- Mongo inside Docker still listens on `27017`.
+- `MONGO_PORT` only affects `docker-compose.dev.yml`.
+- If you change `.env` or `.env.dev`, recreate the relevant containers:
 
 ```bash
 docker compose up -d --force-recreate mongo cloudflared
