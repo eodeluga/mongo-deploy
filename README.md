@@ -26,15 +26,17 @@ Docker Compose setup for a MongoDB 8 single-node replica set with:
 
 ## Environment Variables
 
-Create `.env` (already gitignored) with:
+Create `.env` for `docker-compose.yml` and `.env.dev` for `docker-compose.dev.yml` (both are gitignored) with values like:
 
 ```dotenv
 CLOUDFLARE_TOKEN=<your-cloudflare-tunnel-token>
 MONGO_RS_HOST=mongo
-MONGO_RS_PORT=27019
+MONGO_RS_PORT=27017
 MONGO_INITDB_ROOT_USERNAME=admin
 MONGO_INITDB_ROOT_PASSWORD=<strong-password>
 ```
+
+For the dev compose file, `MONGO_RS_PORT` should stay `27017` so the replica set advertises the same port that Mongo actually listens on inside Docker.
 
 ## Start
 
@@ -56,10 +58,10 @@ Mongo is exposed locally on `127.0.0.1:${MONGO_RS_PORT}`.
 Mongo Compass URI:
 
 ```text
-mongodb://<username>:<password>@127.0.0.1:27019/?authSource=admin&directConnection=true
+mongodb://<username>:<password>@127.0.0.1:${MONGO_RS_PORT}/?authSource=admin&directConnection=true
 ```
 
-Replace `27019` if you changed `MONGO_RS_PORT`.
+Replace `${MONGO_RS_PORT}` with the host port you configured in `.env` or `.env.dev`.
 
 ## Connect Through Cloudflare Tunnel
 
