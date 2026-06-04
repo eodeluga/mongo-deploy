@@ -51,13 +51,34 @@ MONGO_INITDB_ROOT_USERNAME=admin
 MONGO_INITDB_ROOT_PASSWORD=<strong-password>
 ```
 
+Dev compose example:
+
+```dotenv
+MONGO_RS_HOST=mongo
+MONGO_RS_PORT=27017
+MONGO_INITDB_ROOT_USERNAME=admin
+MONGO_INITDB_ROOT_PASSWORD=<strong-password>
+```
+
+For `docker-compose.dev.yml`, `MONGO_PORT` controls the host-published port and defaults to `27017`. Keep `MONGO_RS_PORT=27017` so the replica set advertises the same port Mongo actually listens on inside Docker.
+
 ## Start
+
+Default compose:
 
 ```bash
 docker compose up -d
 ```
 
+Dev compose:
+
+```bash
+docker compose --env-file .env.dev -f docker-compose.dev.yml up -d
+```
+
 Check status:
+
+Default compose:
 
 ```bash
 docker compose ps
@@ -71,10 +92,10 @@ Mongo is exposed locally on loopback only.
 Mongo Compass URI:
 
 ```text
-mongodb://<username>:<password>@127.0.0.1:27019/?authSource=admin&directConnection=true
+mongodb://<username>:<password>@127.0.0.1:${MONGO_RS_PORT}/?authSource=admin&directConnection=true
 ```
 
-Replace `27019` if you changed `MONGO_RS_PORT`.
+For dev compose, connect to `127.0.0.1:${MONGO_PORT:-27017}` instead.
 
 ## Connect Through Cloudflare WARP
 
