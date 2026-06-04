@@ -26,34 +26,62 @@ Docker Compose setup for a MongoDB 8 single-node replica set with:
 
 ## Environment Variables
 
-Create `.env` for `docker-compose.yml` and `.env.dev` for `docker-compose.dev.yml` (both are gitignored) with values like:
+Create `.env` for `docker-compose.yml` and `.env.dev` for `docker-compose.dev.yml` (both are gitignored).
+
+Default compose example:
 
 ```dotenv
 CLOUDFLARE_TOKEN=<your-cloudflare-tunnel-token>
+MONGO_RS_HOST=mongo
+MONGO_RS_PORT=27019
+MONGO_INITDB_ROOT_USERNAME=admin
+MONGO_INITDB_ROOT_PASSWORD=<strong-password>
+```
+
+Dev compose example:
+
+```dotenv
 MONGO_RS_HOST=mongo
 MONGO_RS_PORT=27017
 MONGO_INITDB_ROOT_USERNAME=admin
 MONGO_INITDB_ROOT_PASSWORD=<strong-password>
 ```
 
-For the dev compose file, `MONGO_RS_PORT` should stay `27017` so the replica set advertises the same port that Mongo actually listens on inside Docker.
+For `docker-compose.dev.yml`, `MONGO_PORT` controls the host-published port and defaults to `27017`. Keep `MONGO_RS_PORT=27017` so the replica set advertises the same port Mongo actually listens on inside Docker.
 
 ## Start
+
+Default compose:
 
 ```bash
 docker compose up -d
 ```
 
+Dev compose:
+
+```bash
+docker compose --env-file .env.dev -f docker-compose.dev.yml up -d
+```
+
 Check status:
+
+Default compose:
 
 ```bash
 docker compose ps
-docker logs --tail 100 mongo_db
+docker logs --tail 100 mongo-db
+```
+
+Dev compose:
+
+```bash
+docker compose -f docker-compose.dev.yml ps
+docker logs --tail 100 mongo-db
 ```
 
 ## Connect (Local Machine)
 
-Mongo is exposed locally on `127.0.0.1:${MONGO_RS_PORT}`.
+Default compose exposes Mongo locally on `127.0.0.1:${MONGO_RS_PORT}`.
 
 Mongo Compass URI:
 
@@ -61,7 +89,7 @@ Mongo Compass URI:
 mongodb://<username>:<password>@127.0.0.1:${MONGO_RS_PORT}/?authSource=admin&directConnection=true
 ```
 
-Replace `${MONGO_RS_PORT}` with the host port you configured in `.env` or `.env.dev`.
+For dev compose, connect to `127.0.0.1:${MONGO_PORT:-27017}` instead.
 
 ## Connect Through Cloudflare Tunnel
 
@@ -81,7 +109,8 @@ mongodb://<username>:<password>@127.0.0.1:37017/?authSource=admin&directConnecti
 
 - `MONGO_RS_PORT` is the host-published port only.
 - Mongo inside Docker still listens on `27017`.
-- If you change `.env`, recreate containers:
+- `MONGO_PORT` only affects `docker-compose.dev.yml`.
+- If you change `.env` or `.env.dev`, recreate the relevant containers:
 
 ```bash
 docker compose up -d --force-recreate mongo cloudflared
